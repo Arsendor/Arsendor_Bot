@@ -1,36 +1,72 @@
+import random
 import discord
+from discord.ext import commands
+import os
+import requests
 
-
-# Переменная intents - хранит привилегии бота
+print(os.listdir('images'))
 intents = discord.Intents.default()
-# Включаем привелегию на чтение сообщений
 intents.message_content = True
-# Создаем бота в переменной client и передаем все привелегии
-client = discord.Client(intents=intents)
-
-@client.event
+bot = commands.Bot(command_prefix='$', intents=intents)
+@bot.event
 async def on_ready():
-    print(f'We have logged in as {client.user}')
+    print(f'We have logged in as {bot.user}')
+@bot.command()
+async def hello(ctx):
+    await ctx.send(f'Привет! Я бот {bot.user}!')
+@bot.command()
+async def heh(ctx, count_heh = 5):
+    await ctx.send("he" * count_heh)
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-    if message.content.startswith('$hello'):
-        await message.channel.send("Hi!")
-    elif message.content.startswith('$bye'):
-        await message.channel.send("\\U0001f642")
-    else:
-        await message.channel.send(message.content)
-
-@client.command()
-async def joined(ctx, member: discord.Member):
-    """Says when a member joined."""
-    await ctx.send(f'{member.name} joined {discord.utils.format_dt(member.joined_at)}') 
-
-@client.command()
+@bot.command()
 async def add(ctx, left: int, right: int):
     """Adds two numbers together."""
-    await ctx.send(left + right)    
+    await ctx.send(left + right)
+@bot.command()
+async def joined(ctx, member: discord.Member):
+    """Says when a member joined."""
+    await ctx.send(f'{member.name} joined {discord.utils.format_dt(member.joined_at)}')
 
-client.run("*")
+
+# Путь к папке с изображениями
+meme_folder_path = './images'  # Укажите путь к папке с мемами
+
+# Получаем список всех файлов в папке
+memes = [os.path.join(meme_folder_path, f) for f in os.listdir(meme_folder_path) if os.path.isfile(os.path.join(meme_folder_path, f))]
+
+# Устанавливаем веса для каждого мема (можно задать любые значения)
+weights = [5, 1, 1, 3]  # Убедитесь, что количество весов совпадает с количеством файлов
+
+# Проверка на соответствие количества мемов и весов
+if len(memes) != len(weights):
+    raise ValueError("Количество весов должно совпадать с количеством файлов в папке с мемами.")
+
+# Функция для выбора мема с учетом редкости
+def choose_meme_with_rarity():
+    return random.choices(memes, weights=weights, k=1)[0]
+
+# Команда для отправки случайного мема
+@bot.command(name='meme')
+async def send_random_meme(ctx):
+    meme_path = choose_meme_with_rarity()
+    try:
+        with open(meme_path, 'rb') as meme_file:
+            await ctx.send(file=discord.File(meme_file))
+    except Exception as e:
+        await ctx.send("Не удалось отправить мем.")
+        print(f"Ошибка при отправке мема: {e}")
+
+def get_duck_image_url():    
+    url = 'https://random-d.uk/api/random'
+    res = requests.get(url)
+    data = res.json()
+    return data['url']
+
+
+@bot.command('duck')
+async def duck(ctx):
+    '''По команде duck вызывает функцию get_duck_image_url'''
+    image_url = get_duck_image_url()
+    await ctx.send(image_url)
+
+bot.run("*")
